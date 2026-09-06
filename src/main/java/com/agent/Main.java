@@ -4,13 +4,31 @@ public class Main {
 
     public static void main(String[] args) {
 
-        LLMClient client = new LLMClient();
+        Context context = new Context();
 
-        String response = client.chat(
-                "你好，请用简单的语言介绍一下什么是 AI Agent？"
+        context.addMessage(
+                Message.system("你是一个 Java 后端专家")
         );
 
-        System.out.println("DeepSeek:");
-        System.out.println(response);
+        context.addMessage(
+                Message.user("什么是 Redis？")
+        );
+
+        context.addMessage(
+                Message.assistant("Redis 是一个高性能的内存数据存储系统。")
+        );
+
+        context.addMessage(
+                Message.user("那它为什么这么快？")
+        );
+
+        for (Message message : context.getMessages()) {
+
+            System.out.println(
+                    message.getRole()
+                            + ": "
+                            + message.getContent()
+            );
+        }
     }
 }
