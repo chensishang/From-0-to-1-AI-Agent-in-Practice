@@ -1,9 +1,15 @@
 package com.agent;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class Message {
 
-    private final MessageRole role;
-    private final String content;
+    private MessageRole role;
+    private String content;
+
+    public Message() {
+    }
 
     public Message(MessageRole role, String content) {
         this.role = role;
@@ -14,8 +20,16 @@ public class Message {
         return role;
     }
 
+    public void setRole(MessageRole role) {
+        this.role = role;
+    }
+
     public String getContent() {
         return content;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
     }
 
     public static Message system(String content) {

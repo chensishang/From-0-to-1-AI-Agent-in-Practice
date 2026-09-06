@@ -1,21 +1,52 @@
 package com.agent;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 
-
-
 public class LLMClient {
+
     private static final String API_URL =
             "https://api.deepseek.com/chat/completions";
 
     private static final String MODEL =
             "deepseek-v4-flash";
-    private final HttpClient httpClient=HttpClient.newHttpClient();
-    public String chat(String message){
 
+    private final HttpClient httpClient =
+            HttpClient.newHttpClient();
+
+    private final ObjectMapper objectMapper =
+            new ObjectMapper();
+
+    public String chat(Context context) {
+
+        // 1. Context → ChatRequest
+        ChatRequest chatRequest = new ChatRequest(
+                MODEL,
+                context.getMessages(),
+                false
+        );
+
+        // 2. ChatRequest → JSON
+        String requestBody;
+
+        try {
+
+            requestBody =
+                    objectMapper.writeValueAsString(chatRequest);
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "构造请求 JSON 失败",
+                    e
+            );
+        }
+
+        // 3. 获取 API Key
         String apiKey = System.getenv("DEEPSEEK_API_KEY");
 
         if (apiKey == null || apiKey.isBlank()) {
@@ -24,29 +55,17 @@ public class LLMClient {
             );
         }
 
-
-        String requestBody = """
-                {
-                    "model": "%s",
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": "%s"
-                        }
-                    ],
-                    "thinking": {
-                        "type": "disabled"
-                    },
-                    "stream": false
-                }
-                """.formatted(MODEL, message);
-        HttpRequest request= HttpRequest.newBuilder()
-                .uri(java.net.URI.create((API_URL)))
+        // 4. 构造 HTTP 请求
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(API_URL))
                 .header("Content-Type", "application/json")
                 .header("Authorization", "Bearer " + apiKey)
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                .POST(
+                        HttpRequest.BodyPublishers.ofString(requestBody)
+                )
                 .build();
 
+        // 5. 发送 HTTP 请求
         try {
 
             HttpResponse<String> response =
@@ -55,16 +74,30 @@ public class LLMClient {
                             HttpResponse.BodyHandlers.ofString()
                     );
 
+            // 6. 检查 HTTP 状态码
             if (response.statusCode() != 200) {
+
                 throw new RuntimeException(
                         "DeepSeek API 请求失败，HTTP Status: "
-                        + response.statusCode()
-                        + "\n"
-                        + response.body()
+                                + response.statusCode()
+                                + "\n"
+                                + response.body()
                 );
             }
 
-            return response.body();
+            // 7. JSON → ChatResponse
+            ChatResponse chatResponse =
+                    objectMapper.readValue(
+                            response.body(),
+                            ChatResponse.class
+                    );
+
+            // 8. 提取 AI 回复
+            return chatResponse
+                    .getChoices()
+                    .get(0)
+                    .getMessage()
+                    .getContent();
 
         } catch (Exception e) {
 
@@ -73,7 +106,5 @@ public class LLMClient {
                     e
             );
         }
-
-
     }
 }
