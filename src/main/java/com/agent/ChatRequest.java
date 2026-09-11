@@ -10,14 +10,18 @@ public class ChatRequest {
 
     private boolean stream;
 
+    private List<ToolDefinition> tools;
+
     public ChatRequest(
             String model,
             List<Message> messages,
-            boolean stream
+            boolean stream,
+            List<ToolDefinition> tools
     ) {
         this.model = model;
         this.messages = messages;
         this.stream = stream;
+        this.tools = tools;
     }
 
     public String getModel() {
@@ -30,5 +34,9 @@ public class ChatRequest {
 
     public boolean isStream() {
         return stream;
+    }
+
+    public List<ToolDefinition> getTools() {
+        return tools;
     }
 }

@@ -6,6 +6,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.List;
 
 public class LLMClient {
 
@@ -21,13 +22,17 @@ public class LLMClient {
     private final ObjectMapper objectMapper =
             new ObjectMapper();
 
-    public String chat(Context context) {
+    public ChatResponse chat(
+            Context context,
+            List<ToolDefinition> tools
+    ) {
 
         // 1. Context → ChatRequest
         ChatRequest chatRequest = new ChatRequest(
                 MODEL,
                 context.getMessages(),
-                false
+                false,
+                tools
         );
 
         // 2. ChatRequest → JSON
@@ -93,12 +98,7 @@ public class LLMClient {
                     );
 
             // 8. 提取 AI 回复
-            return chatResponse
-                    .getChoices()
-                    .get(0)
-                    .getMessage()
-                    .getContent();
-
+            return chatResponse;
         } catch (Exception e) {
 
             throw new RuntimeException(
