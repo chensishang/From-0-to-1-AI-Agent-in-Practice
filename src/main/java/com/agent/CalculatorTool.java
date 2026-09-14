@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
 
 public class CalculatorTool implements Tool {
 
@@ -19,6 +21,38 @@ public class CalculatorTool implements Tool {
     public String getDescription() {
         return "执行数学计算";
     }
+
+    @Override
+    public Map<String, Object> getParameters() {
+
+        Map<String, Object> properties = new HashMap<>();
+
+        properties.put(
+                "a",
+                Map.of("type", "number")
+        );
+
+        properties.put(
+                "b",
+                Map.of("type", "number")
+        );
+
+        properties.put(
+                "operation",
+                Map.of("type", "string")
+        );
+
+        return Map.of(
+                "type", "object",
+                "properties", properties,
+                "required", List.of(
+                        "a",
+                        "b",
+                        "operation"
+                )
+        );
+    }
+
 
     @Override
     public Object execute(String arguments) {

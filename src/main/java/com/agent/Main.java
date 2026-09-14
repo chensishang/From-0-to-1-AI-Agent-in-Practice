@@ -1,74 +1,29 @@
 package com.agent;
 
 import java.util.List;
-import java.util.Map;
 
 public class Main {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
-        // 1. 创建 CalculatorTool
+        // 1. 创建 Tool
         CalculatorTool calculatorTool =
                 new CalculatorTool();
 
         // 2. 创建 ToolRegistry
-        ToolRegistry toolRegistry =
+        ToolRegistry registry =
                 new ToolRegistry();
 
-        toolRegistry.register(
-                calculatorTool
-        );
+        // 3. 注册 Tool
+        registry.register(calculatorTool);
 
-        // 3. 定义 calculator 的参数 Schema
-        Map<String, Object> parameters = Map.of(
+        // 4. 创建 ToolDefinitionFactory
+        ToolDefinitionFactory factory =
+                new ToolDefinitionFactory();
 
-                "type", "object",
-
-                "properties", Map.of(
-
-                        "a", Map.of(
-                                "type", "number",
-                                "description", "第一个数字"
-                        ),
-
-                        "b", Map.of(
-                                "type", "number",
-                                "description", "第二个数字"
-                        ),
-
-                        "operation", Map.of(
-                                "type", "string",
-                                "description", "数学运算类型",
-                                "enum", new String[]{
-                                        "add",
-                                        "subtract",
-                                        "multiply",
-                                        "divide"
-                                }
-                        )
-                ),
-
-                "required", new String[]{
-                        "a",
-                        "b",
-                        "operation"
-                }
-        );
-
-        // 4. 创建 FunctionDefinition
-        ToolDefinition.FunctionDefinition function =
-                new ToolDefinition.FunctionDefinition(
-                        "calculator",
-                        "执行数学计算",
-                        parameters
-                );
-
-        // 5. 创建 ToolDefinition
-        ToolDefinition calculatorDefinition =
-                new ToolDefinition(
-                        "function",
-                        function
-                );
+        // 5. 创建所有 ToolDefinition
+        List<ToolDefinition> tools =
+                factory.createAll(registry);
 
         // 6. 创建 LLMClient
         LLMClient llmClient =
@@ -78,18 +33,20 @@ public class Main {
         Agent agent =
                 new Agent(
                         llmClient,
-                        toolRegistry,
-                        List.of(calculatorDefinition)
+                        registry,
+                        tools
                 );
 
         // 8. 让 Agent 执行任务
         String answer =
                 agent.run(
-                        "123 × 456 等于多少？"
+                        "请分别计算以下两个问题：123乘以456，以及100加200。"
                 );
 
-        // 9. 输出结果
-        System.out.println("Agent:");
-        System.out.println(answer);
+        // 9. 输出最终答案
+        System.out.println(
+                "AI最终回答: "
+                        + answer
+        );
     }
 }

@@ -59,42 +59,22 @@ public class Agent {
                 return assistantMessage.getContent();
             }
 
-            // 5. 执行 ToolCall
+            // 5. 创建 ToolRuntime
+            ToolRuntime runtime =
+                    new ToolRuntime(toolRegistry);
+
+            // 6. 执行所有 ToolCall
             for (ToolCall toolCall :
                     assistantMessage.getToolCalls()) {
 
-                String toolName =
-                        toolCall
-                                .getFunction()
-                                .getName();
+                ToolResult result =
+                        runtime.execute(toolCall);
 
-                String arguments =
-                        toolCall
-                                .getFunction()
-                                .getArguments();
-
-                // 6. 根据工具名称找到真正的 Java Tool
-                Tool tool =
-                        toolRegistry.getTool(
-                                toolName
-                        );
-
-                if (tool == null) {
-
-                    throw new IllegalStateException(
-                            "未找到工具: " + toolName
-                    );
-                }
-
-                // 7. 执行工具
-                Object result =
-                        tool.execute(arguments);
-
-                // 8. 将工具结果放回 Context
+                // 7. 将工具结果放回 Context
                 context.addMessage(
                         Message.tool(
-                                toolCall.getId(),
-                                String.valueOf(result)
+                                result.getToolCallId(),
+                                result.getContent()
                         )
                 );
             }
