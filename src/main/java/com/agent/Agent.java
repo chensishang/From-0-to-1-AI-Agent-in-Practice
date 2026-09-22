@@ -1,6 +1,15 @@
 package com.agent;
 
+import com.agent.memory.Memory;
+import com.agent.memory.MemoryEntry;
+import com.agent.memory.MemoryInjector;
+import com.agent.memory.MemoryWriter;
+import com.agent.rag.KnowledgeInjector;
+import com.agent.rag.Retriever;
+import com.agent.rag.SearchResult;
+
 import java.util.List;
+import com.agent.memory.MemoryRetriever;
 
 public class Agent {
 
@@ -14,19 +23,34 @@ public class Agent {
     private final Retriever retriever;
 
     private final KnowledgeInjector knowledgeInjector;
+    private final Memory memory;
+    private final MemoryInjector memoryInjector;
+    private final MemoryWriter memoryWriter;
+    private final MemoryRetriever memoryRetriever;
+
 
     public Agent(
             LLMClient llmClient,
             ToolRegistry toolRegistry,
             List<ToolDefinition> toolDefinitions,
             Retriever retriever,
-            KnowledgeInjector knowledgeInjector
+            KnowledgeInjector knowledgeInjector,
+            Memory memory,
+            MemoryInjector memoryInjector,
+            MemoryWriter memoryWriter,
+            MemoryRetriever memoryRetriever
+
     ) {
         this.llmClient = llmClient;
         this.toolRegistry = toolRegistry;
         this.toolDefinitions = toolDefinitions;
         this.retriever = retriever;
         this.knowledgeInjector = knowledgeInjector;
+        this.memory = memory;
+        this.memoryInjector = memoryInjector;
+        this.memoryWriter=memoryWriter;
+        this.memoryRetriever = memoryRetriever;
+
     }
 
     public String run(String userInput) {
@@ -35,6 +59,30 @@ public class Agent {
 
         context.addMessage(
                 Message.user(userInput)
+        );
+        // =========================
+// 读取 Memory
+// =========================
+
+        List<MemoryEntry> memories =
+                memoryRetriever.retrieve(userInput);
+
+        System.out.println(
+                "\n===== Memory 检索 ====="
+        );
+
+        for (MemoryEntry memoryEntry : memories) {
+
+            System.out.println(
+                    memoryEntry.getKey()
+                            + " → "
+                            + memoryEntry.getValue()
+            );
+        }
+
+        memoryInjector.inject(
+                context,
+                memories
         );
 
         // 1. 检索知识库
@@ -62,24 +110,24 @@ public class Agent {
 
         // 2. 没有检索到足够相关的知识
         if (results == null || results.isEmpty()) {
+
             System.out.println(
                     "RAG：没有找到满足 threshold 的知识"
             );
 
-            return "知识库中没有找到与该问题相关的信息。";
-        }
-        //有结果时
-        System.out.println(
-                "RAG：检索到 "
-                        + results.size()
-                        + " 条相关知识"
-        );
+        } else {
 
-        // 3. 将知识注入 Context
-        knowledgeInjector.inject(
-                context,
-                results
-        );
+            System.out.println(
+                    "RAG：检索到 "
+                            + results.size()
+                            + " 条相关知识"
+            );
+
+            knowledgeInjector.inject(
+                    context,
+                    results
+            );
+        }
 
         // 4. Agent Loop
         for (int i = 0; i < MAX_ITERATIONS; i++) {
@@ -110,6 +158,17 @@ public class Agent {
 
             if (assistantMessage.getToolCalls() == null
                     || assistantMessage.getToolCalls().isEmpty()) {
+
+
+                System.out.println(
+                        "准备写入Memory..."
+                );
+
+
+                memoryWriter.write(
+                        userInput
+                );
+
 
                 return assistantMessage.getContent();
             }

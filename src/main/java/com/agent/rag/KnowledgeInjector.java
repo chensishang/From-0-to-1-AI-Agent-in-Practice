@@ -1,4 +1,8 @@
-package com.agent;
+package com.agent.rag;
+
+import com.agent.Context;
+import com.agent.Message;
+import com.agent.MessageRole;
 
 import java.util.List;
 

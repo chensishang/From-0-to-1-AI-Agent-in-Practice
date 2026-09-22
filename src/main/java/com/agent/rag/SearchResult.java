@@ -1,4 +1,4 @@
-package com.agent;
+package com.agent.rag;
 
 public class SearchResult {
 
