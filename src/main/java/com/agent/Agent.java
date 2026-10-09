@@ -23,10 +23,12 @@ public class Agent {
     private final Retriever retriever;
 
     private final KnowledgeInjector knowledgeInjector;
-    private final Memory memory;
+
     private final MemoryInjector memoryInjector;
     private final MemoryWriter memoryWriter;
     private final MemoryRetriever memoryRetriever;
+    private final SimpleDecisionMaker decisionMaker;
+    private final Memory memory;
 
 
     public Agent(
@@ -38,7 +40,8 @@ public class Agent {
             Memory memory,
             MemoryInjector memoryInjector,
             MemoryWriter memoryWriter,
-            MemoryRetriever memoryRetriever
+            MemoryRetriever memoryRetriever,
+            SimpleDecisionMaker decisionMaker
 
     ) {
         this.llmClient = llmClient;
@@ -50,83 +53,93 @@ public class Agent {
         this.memoryInjector = memoryInjector;
         this.memoryWriter=memoryWriter;
         this.memoryRetriever = memoryRetriever;
+        this.decisionMaker = decisionMaker;
 
     }
 
     public String run(String userInput) {
+        AgentDecision decision =
+                decisionMaker.decide(userInput);
+
+        System.out.println(
+                "\n===== Agent Decision ====="
+        );
+
+        System.out.println(
+                "Decision：" + decision.getType()
+        );
 
         Context context = new Context();
 
         context.addMessage(
                 Message.user(userInput)
         );
+        //根据决策来判断要不要记忆机制
         // =========================
-// 读取 Memory
-// =========================
+        if (decision.getType() == DecisionType.MEMORY) {
 
-        List<MemoryEntry> memories =
-                memoryRetriever.retrieve(userInput);
+            System.out.println("\n===== Memory 检索 =====");
 
-        System.out.println(
-                "\n===== Memory 检索 ====="
-        );
+            List<MemoryEntry> memories =
+                    memoryRetriever.retrieve(userInput);
 
-        for (MemoryEntry memoryEntry : memories) {
-
-            System.out.println(
-                    memoryEntry.getKey()
-                            + " → "
-                            + memoryEntry.getValue()
-            );
-        }
-
-        memoryInjector.inject(
-                context,
-                memories
-        );
-
-        // 1. 检索知识库
-        List<SearchResult> results =
-                retriever.retrieve(
-                        userInput,
-                        2,
-                        0.5
+            for (MemoryEntry memoryEntry : memories) {
+                System.out.println(
+                        memoryEntry.getKey()
+                                + " → "
+                                + memoryEntry.getValue()
                 );
-        System.out.println(
-                "\n===== RAG 检索 ====="
-        );
+            }
 
-        for (SearchResult result : results) {
-
-            System.out.println(
-                    "Score：" + result.getScore()
-            );
-
-            System.out.println(
-                    "Text：" +
-                            result.getSegment().getText()
+            memoryInjector.inject(
+                    context,
+                    memories
             );
         }
 
-        // 2. 没有检索到足够相关的知识
-        if (results == null || results.isEmpty()) {
+        // 根据判断来决定要不要进行RAG
+        if (decision.getType() == DecisionType.RAG) {
 
-            System.out.println(
-                    "RAG：没有找到满足 threshold 的知识"
-            );
+            List<SearchResult> results =
+                    retriever.retrieve(
+                            userInput,
+                            2,
+                            0.5
+                    );
 
-        } else {
+            System.out.println("\n===== RAG 检索 =====");
 
-            System.out.println(
-                    "RAG：检索到 "
-                            + results.size()
-                            + " 条相关知识"
-            );
+            for (SearchResult result : results) {
 
-            knowledgeInjector.inject(
-                    context,
-                    results
-            );
+                System.out.println(
+                        "Score：" + result.getScore()
+                );
+
+                System.out.println(
+                        "Text：" +
+                                result.getSegment().getText()
+                );
+            }
+
+            if (results == null || results.isEmpty()) {
+
+                System.out.println(
+                        "RAG：没有找到满足 threshold 的知识"
+                );
+
+            } else {
+
+                System.out.println(
+                        "RAG：检索到 "
+                                + results.size()
+                                + " 条相关知识"
+                );
+
+                knowledgeInjector.inject(
+                        context,
+                        results
+                );
+            }
         }
 
         // 4. Agent Loop

@@ -174,6 +174,8 @@ public class Main {
 
 
 
+        SimpleDecisionMaker decisionMaker =
+                new SimpleDecisionMaker();
         // =========================
         // 9. 创建 Agent
         // =========================
@@ -188,13 +190,13 @@ public class Main {
                         memory,
                         memoryInjector,
                         memoryWriter,
-                        memoryRetriever
+                        memoryRetriever,
+                        decisionMaker
 
 
                 );
 
 
-        // =========================
 // 10. Agent 执行任务
 // =========================
         System.out.println(
@@ -254,6 +256,54 @@ public class Main {
 
         System.out.println(
                 "AI：" + answer5
+        );
+
+        System.out.println(
+                "\n========== 第七次对话：RAG =========="
+        );
+
+        String answer7 =
+                agent.run("Redis 是什么？");
+
+        System.out.println(
+                "AI：" + answer7
+        );
+
+
+
+        // =========================
+        // 阶段 09：Action → Observation 测试
+        // =========================
+
+        System.out.println(
+                "\n========== 阶段 09：Action 执行测试 =========="
+        );
+
+        ToolRuntime toolRuntime =
+                new ToolRuntime(registry);
+
+        ActionExecutor executor =
+                new CalculatorActionExecutor(toolRuntime);
+
+        Action action = new Action(
+                "TOOL",
+                "calculator",
+                "{\"a\":123,\"b\":456,\"operation\":\"multiply\"}"
+        );
+
+        Observation observation =
+                executor.execute(action);
+
+        System.out.println(
+                "执行是否成功：" + observation.isSuccess()
+        );
+
+        System.out.println(
+                "动作类型：" + observation.getActionType()
+        );
+
+        System.out.println(
+                "执行结果：" + observation.getContent()
         );
 
 
