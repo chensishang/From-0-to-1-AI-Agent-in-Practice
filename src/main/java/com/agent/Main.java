@@ -176,6 +176,13 @@ public class Main {
 
         SimpleDecisionMaker decisionMaker =
                 new SimpleDecisionMaker();
+
+        //
+        ToolRuntime toolRuntime =
+                new ToolRuntime(registry);
+
+        ActionExecutor  actionExecutor =
+                new CalculatorActionExecutor(toolRuntime);
         // =========================
         // 9. 创建 Agent
         // =========================
@@ -191,7 +198,8 @@ public class Main {
                         memoryInjector,
                         memoryWriter,
                         memoryRetriever,
-                        decisionMaker
+                        decisionMaker,
+                        actionExecutor
 
 
                 );
@@ -279,11 +287,7 @@ public class Main {
                 "\n========== 阶段 09：Action 执行测试 =========="
         );
 
-        ToolRuntime toolRuntime =
-                new ToolRuntime(registry);
 
-        ActionExecutor executor =
-                new CalculatorActionExecutor(toolRuntime);
 
         Action action = new Action(
                 "TOOL",
@@ -292,7 +296,7 @@ public class Main {
         );
 
         Observation observation =
-                executor.execute(action);
+                actionExecutor.execute(action);
 
         System.out.println(
                 "执行是否成功：" + observation.isSuccess()
@@ -306,6 +310,23 @@ public class Main {
                 "执行结果：" + observation.getContent()
         );
 
+        System.out.println(
+                "\n========== 阶段 10：连续工具调用测试 =========="
+        );
+
+        String answer8 = agent.run(
+                "请先计算123乘以456，然后把第一次计算的结果再加上200，最后告诉我两次计算的过程和最终结果。"
+        );
+
+        System.out.println("AI：" + answer8);
+
+        System.out.println(
+                "\n========== 阶段 10：停止条件测试 =========="
+        );
+
+        String answer9 = agent.run("你好，请简单介绍一下你自己。");
+
+        System.out.println("AI：" + answer9);
 
     }
 }

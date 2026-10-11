@@ -29,6 +29,7 @@ public class Agent {
     private final MemoryRetriever memoryRetriever;
     private final SimpleDecisionMaker decisionMaker;
     private final Memory memory;
+    private final ActionExecutor actionExecutor;
 
 
     public Agent(
@@ -41,7 +42,8 @@ public class Agent {
             MemoryInjector memoryInjector,
             MemoryWriter memoryWriter,
             MemoryRetriever memoryRetriever,
-            SimpleDecisionMaker decisionMaker
+            SimpleDecisionMaker decisionMaker,
+            ActionExecutor actionExecutor
 
     ) {
         this.llmClient = llmClient;
@@ -54,6 +56,7 @@ public class Agent {
         this.memoryWriter=memoryWriter;
         this.memoryRetriever = memoryRetriever;
         this.decisionMaker = decisionMaker;
+        this.actionExecutor = actionExecutor;
 
     }
 
@@ -152,6 +155,42 @@ public class Agent {
             );
 
             System.out.println("调用 LLM...");
+            //调试
+
+            System.out.println("本轮调用 LLM 前的 Context：");
+
+            List<Message> messages = context.getMessages();
+
+            for (int j = 0; j < messages.size(); j++) {
+                Message message = messages.get(j);
+
+                System.out.println(
+                        "[" + j + "] role=" + message.getRole()
+                );
+
+                if (message.getContent() != null) {
+                    System.out.println("    content=" + message.getContent());
+                }
+
+                if (message.getToolCalls() != null
+                        && !message.getToolCalls().isEmpty()) {
+                    for (ToolCall toolCall : message.getToolCalls()) {
+                        System.out.println(
+                                "    toolCall="
+                                        + toolCall.getFunction().getName()
+                                        + ", arguments="
+                                        + toolCall.getFunction().getArguments()
+                        );
+                    }
+                }
+
+                if (message.getToolCallId() != null) {
+                    System.out.println(
+                            "    toolCallId=" + message.getToolCallId()
+                    );
+                }
+            }
+            //调试
 
             ChatResponse response =
                     llmClient.chat(
@@ -186,32 +225,41 @@ public class Agent {
                 return assistantMessage.getContent();
             }
 
-            ToolRuntime runtime =
-                    new ToolRuntime(toolRegistry);
 
-            for (ToolCall toolCall :
-                    assistantMessage.getToolCalls()) {
+            for (ToolCall toolCall : assistantMessage.getToolCalls()) {
 
                 System.out.println(
-                        "执行 Tool："
+                        "执行 Action："
                                 + toolCall.getFunction().getName()
                 );
 
-                ToolResult result =
-                        runtime.execute(toolCall);
-
-                System.out.println(
-                        "ToolResult："
-                                + result.getContent()
+                // 1. 将 LLM 返回的 ToolCall 转换为 Action
+                Action action = new Action(
+                        "TOOL",
+                        toolCall.getFunction().getName(),
+                        toolCall.getFunction().getArguments()
                 );
 
+                // 2. 交给 ActionExecutor 执行动作
+                Observation observation = actionExecutor.execute(action);
+
+                System.out.println(
+                        "Action 是否成功：" + observation.isSuccess()
+                );
+
+                System.out.println(
+                        "Observation：" + observation.getContent()
+                );
+
+                // 3. 将执行结果作为 Tool 消息放回 Context
                 context.addMessage(
                         Message.tool(
-                                result.getToolCallId(),
-                                result.getContent()
+                                toolCall.getId(),
+                                observation.getContent()
                         )
                 );
             }
+
         }
 
         throw new IllegalStateException(
